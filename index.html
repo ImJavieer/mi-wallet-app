@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mi Wallet App</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="manifest" href="manifest.json">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="app-container">
+        <header class="header">
+            <h1>Panel</h1>
+            <div class="header-actions">
+                <div class="action-btn">N</div>
+                <div class="action-btn">A</div>
+            </div>
+        </header>
+
+        <main class="dashboard">
+            <div class="top-cards">
+                <div class="card balance-card">
+                    <div class="icon-container balance-icon"><span>$</span></div>
+                    <p class="card-label">CASH</p>
+                    <h2 class="card-amount" id="main-balance">$0</h2>
+                </div>
+
+                <div class="card balance-card">
+                    <div class="icon-container savings-icon"><span>A</span></div>
+                    <p class="card-label">AHORROS</p>
+                    <h2 class="card-amount" id="savings-balance">$0</h2>
+                </div>
+
+                <div class="card balance-card">
+                    <div class="icon-container credit-icon"><span>C</span></div>
+                    <p class="card-label">DEUDA TC</p>
+                    <h2 class="card-amount" id="credit-balance">$0</h2>
+                    <p id="credit-available" style="font-size: 11px; color: #8e8e93; margin-top: 5px;">Disp: $1.000.000</p>
+                </div>
+                
+                <div class="card add-card" id="btn-add-account">
+                    <div class="icon-container add-icon"><span>+</span></div>
+                    <p class="card-label">Agregar</p>
+                </div>
+            </div>
+
+            <div class="balance-trend">
+                <div class="trend-header">
+                    <h3>Tendencia del saldo</h3>
+                    <span class="dots">...</span>
+                </div>
+                <div class="trend-amount-container">
+                    <h2 class="card-amount" id="trend-balance">$0</h2>
+                    <button class="add-transaction-btn" id="btn-add-trend">+</button>
+                </div>
+                <div class="chart-placeholder">
+                    <canvas id="balanceChart"></canvas>
+                </div>
+            </div>
+
+            <div class="recent-transactions">
+                <div class="trend-header">
+                    <h3>Últimos registros</h3>
+                    <span class="dots">...</span>
+                </div>
+                <div class="transactions-list" id="transactions-list">
+                    </div>
+            </div>
+        </main>
+
+        <nav class="bottom-nav">
+            <div class="nav-item active"><span class="nav-icon">$</span><span class="nav-text">Panel</span></div>
+            <div class="nav-item"><span class="nav-icon">L</span><span class="nav-text">Planificación</span></div>
+            <div class="nav-item"><span class="nav-icon">I</span><span class="nav-text">Estadísticas</span></div>
+            <div class="nav-item"><span class="nav-icon">...</span><span class="nav-text">Más</span></div>
+        </nav>
+
+        <div class="modal-overlay" id="transaction-modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2 id="modal-title">Nuevo Registro</h2>
+                    <button class="close-btn" id="btn-close-modal">X</button>
+                </div>
+                <form id="transaction-form">
+                    <input type="hidden" id="edit-index" value="-1">
+
+                    <div class="form-group">
+                        <label>Tipo de movimiento</label>
+                        <select id="type-select">
+                            <option value="gasto_debito">Gasto (Débito)</option>
+                            <option value="gasto_credito">Gasto (Crédito)</option>
+                            <option value="ingreso">Ingreso de dinero</option>
+                            <option value="traspaso_ahorro">Traspaso a Ahorro</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Categoría</label>
+                        <select id="category-select">
+                            <option value="Comida rápida">Comida rápida</option>
+                            <option value="Ropa o vestimenta">Ropa o vestimenta</option>
+                            <option value="Ocio">Ocio</option>
+                            <option value="Compras diarias">Compras diarias</option>
+                            <option value="Supermercado">Supermercado</option>
+                            <option value="Membresías">Membresías</option>
+                            <option value="Otros">Otros</option>
+                            <option value="Ingreso/Ahorro">- Ingreso o Traspaso -</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Monto</label>
+                        <input type="number" id="amount-input" placeholder="Ej: 15000" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Descripción Extra</label>
+                        <input type="text" id="desc-input" placeholder="Ej: Almuerzo trabajo" required>
+                    </div>
+                    <button type="submit" class="save-btn">Guardar</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

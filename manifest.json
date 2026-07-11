@@ -1,0 +1,15 @@
+{
+  "name": "Mi Wallet App",
+  "short_name": "Mi Wallet",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#151517",
+  "theme_color": "#151517",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/3364/3364122.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
