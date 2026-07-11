@@ -15,13 +15,7 @@
 
     <main id="inicio-panel" class="panel active">
         <section class="balances" id="balances-container">
-            <div class="card add-action" id="open-add-account-modal">
-                <div class="icon-bg blue add-icon"><span>+</span></div>
-                <div class="card-text">
-                    <span style="color: #aaa;">AGREGAR CUENTA</span>
-                </div>
-            </div>
-        </section>
+            </section>
 
         <section class="recent-records">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
@@ -73,16 +67,15 @@
                 <select id="type" required>
                     <option value="gasto">Gasto</option>
                     <option value="ingreso">Ingreso</option>
-                    </select>
+                </select>
                 
                 <select id="account-select" required>
-                    </select>
+                </select>
 
                 <select id="category" required>
-                    </select>
+                </select>
                 
                 <input type="text" id="new-category-input" placeholder="Nombre de nueva categoría" style="display: none;">
-
                 <input type="number" id="amount" placeholder="Monto" required>
                 <input type="text" id="description" placeholder="Descripción" required>
                 <button type="submit">Guardar</button>
@@ -111,6 +104,17 @@
                 </div>
 
                 <button type="submit">Crear Cuenta</button>
+            </form>
+        </div>
+    </div>
+
+    <div id="edit-account-modal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <span id="close-edit-account-modal">X</span>
+            <h3>Editar Cuenta</h3>
+            <form id="edit-account-form">
+                <input type="text" id="edit-acc-name" placeholder="Nuevo nombre de la cuenta" required>
+                <button type="submit">Guardar Cambios</button>
             </form>
         </div>
     </div>

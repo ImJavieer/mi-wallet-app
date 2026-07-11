@@ -1,5 +1,5 @@
-// 1. ESTRUCTURAS DE DATOS Y MEMORIA (Versión 5)
-// Para forzar la actualización de la estructura, cambiamos la llave.
+// 1. ESTRUCTURAS DE DATOS Y MEMORIA
+// Mantenemos v5 para que reconozca los datos de tu teléfono y no borre nada.
 const STORAGE_KEY = 'wallet_v5';
 
 let appData = JSON.parse(localStorage.getItem(STORAGE_KEY)) || {
@@ -37,16 +37,19 @@ const panelStats = document.getElementById('estadisticas-panel');
 // Modales
 const recordModal = document.getElementById('modal');
 const accountModal = document.getElementById('account-modal');
+const editAccountModal = document.getElementById('edit-account-modal');
+
 const btnAddRecord = document.getElementById('open-add-modal');
-const btnAddAccount = document.getElementById('open-add-account-modal');
 const btnCloseRecord = document.getElementById('close-modal');
 const btnCloseAccount = document.getElementById('close-account-modal');
+const closeEditAccountBtn = document.getElementById('close-edit-account-modal');
 
 // Formularios
 const recordForm = document.getElementById('record-form');
 const accountForm = document.getElementById('account-form');
+const editAccountForm = document.getElementById('edit-account-form');
 
-// Inputs Formulario Registro
+// Inputs
 const typeSelect = document.getElementById('type');
 const accountSelect = document.getElementById('account-select');
 const categorySelect = document.getElementById('category');
@@ -79,15 +82,9 @@ btnAddRecord.addEventListener('click', () => {
 });
 btnCloseRecord.addEventListener('click', () => recordModal.style.display = 'none');
 
-btnAddAccount.addEventListener('click', () => {
-    accountForm.reset();
-    document.getElementById('debito-fields').style.display = 'block';
-    document.getElementById('credito-fields').style.display = 'none';
-    accountModal.style.display = 'flex';
-});
+// Lógica para cerrar modal de nueva cuenta (El botón de abrir se genera por JS)
 btnCloseAccount.addEventListener('click', () => accountModal.style.display = 'none');
 
-// Comportamiento del formulario de Nueva Cuenta (mostrar campos según tipo)
 document.getElementById('acc-type').addEventListener('change', function() {
     if(this.value === 'debito') {
         document.getElementById('debito-fields').style.display = 'block';
@@ -98,7 +95,6 @@ document.getElementById('acc-type').addEventListener('change', function() {
     }
 });
 
-// Comportamiento del formulario de Registro (mostrar categorías y campo nuevo)
 typeSelect.addEventListener('change', updateRecordFormOptions);
 categorySelect.addEventListener('change', function() {
     if(this.value === 'nueva') {
@@ -112,7 +108,6 @@ categorySelect.addEventListener('change', function() {
 });
 
 function updateRecordFormOptions() {
-    // 1. Cargar Cuentas
     accountSelect.innerHTML = '';
     appData.accounts.forEach(acc => {
         const option = document.createElement('option');
@@ -121,7 +116,6 @@ function updateRecordFormOptions() {
         accountSelect.appendChild(option);
     });
 
-    // 2. Cargar Categorías según tipo (gasto/ingreso)
     categorySelect.innerHTML = '';
     const currentType = typeSelect.value;
     const cats = appData.categories[currentType];
@@ -133,7 +127,6 @@ function updateRecordFormOptions() {
         categorySelect.appendChild(option);
     });
 
-    // Opción para nueva categoría
     const newCatOption = document.createElement('option');
     newCatOption.value = 'nueva';
     newCatOption.innerText = '+ Nueva Categoría...';
@@ -144,7 +137,7 @@ function updateRecordFormOptions() {
     newCategoryInput.required = false;
 }
 
-// 5. GUARDAR DATOS
+// 5. GUARDAR Y MANEJAR DATOS
 function saveData() {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(appData));
     updateUI();
@@ -193,7 +186,6 @@ recordForm.addEventListener('submit', (e) => {
     const amount = parseFloat(document.getElementById('amount').value);
     const description = document.getElementById('description').value;
 
-    // Si es nueva categoría, guardarla en appData
     if(category === 'nueva') {
         category = newCategoryInput.value.toLowerCase().trim();
         if(category && !appData.categories[type].includes(category)) {
@@ -201,7 +193,6 @@ recordForm.addEventListener('submit', (e) => {
         }
     }
 
-    // Si editamos, borramos el viejo para recalcular
     if (recordForm.dataset.editId) {
         appData.records = appData.records.filter(r => r.id !== parseInt(recordForm.dataset.editId));
     }
@@ -221,7 +212,6 @@ function deleteRecord(id) {
 }
 
 function deleteAccount(id) {
-    // Verificar si hay registros asociados
     const hasRecords = appData.records.some(r => r.accountId === id);
     if(hasRecords) {
         alert("No puedes eliminar una cuenta que tiene transacciones asociadas. Elimina los registros primero.");
@@ -250,26 +240,58 @@ function editRecord(id) {
     recordModal.style.display = 'flex';
 }
 
+// Funciones nuevas: Mover y Editar Cuenta
+function moveAccount(id, direction) {
+    const index = appData.accounts.findIndex(a => a.id === id);
+    if (index < 0) return;
+    const newIndex = index + direction;
+    if (newIndex < 0 || newIndex >= appData.accounts.length) return;
+    
+    // Intercambiar posiciones en el arreglo
+    const temp = appData.accounts[index];
+    appData.accounts[index] = appData.accounts[newIndex];
+    appData.accounts[newIndex] = temp;
+    
+    saveData();
+}
+
+let editAccountId = null;
+function openEditAccount(id) {
+    const acc = appData.accounts.find(a => a.id === id);
+    if (!acc) return;
+    editAccountId = id;
+    document.getElementById('edit-acc-name').value = acc.name;
+    editAccountModal.style.display = 'flex';
+}
+
+closeEditAccountBtn.addEventListener('click', () => editAccountModal.style.display = 'none');
+
+editAccountForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const acc = appData.accounts.find(a => a.id === editAccountId);
+    if (acc) {
+        acc.name = document.getElementById('edit-acc-name').value.toUpperCase();
+        acc.iconText = acc.name.charAt(0);
+        saveData();
+    }
+    editAccountModal.style.display = 'none';
+});
+
 // 6. MATEMÁTICAS Y RENDERIZADO
 function recalculateBalances() {
-    // Resetear a los balances iniciales de creación
     appData.accounts.forEach(acc => {
         if(acc.type === 'debito') acc.balance = acc.initialBalance;
         if(acc.type === 'credito') acc.used = acc.initialUsed;
     });
 
-    // Aplicar transacciones
-    // Nota: Como la lista está en orden inverso (unshift), iteramos desde el final
-    // o simplemente sumamos todo. Como la suma es conmutativa, el orden de aplicación aquí da igual para saldos finales.
     appData.records.forEach(r => {
         const acc = appData.accounts.find(a => a.id === r.accountId);
-        if(!acc) return; // Si la cuenta se borró, ignoramos
+        if(!acc) return;
 
         if(acc.type === 'debito') {
             if(r.type === 'ingreso') acc.balance += r.amount;
             if(r.type === 'gasto') acc.balance -= r.amount;
         } else if (acc.type === 'credito') {
-            // En tarjeta de crédito, un gasto aumenta lo usado, un ingreso (pago) lo disminuye
             if(r.type === 'gasto') acc.used += r.amount;
             if(r.type === 'ingreso') acc.used -= r.amount;
         }
@@ -296,8 +318,14 @@ function updateUI() {
             `;
         }
 
+        // Incorporamos las flechas, el lápiz para editar y el basurero
         div.innerHTML = `
-            <button class="delete-account-btn" onclick="deleteAccount(${acc.id})">🗑️</button>
+            <div class="account-actions">
+                <button onclick="moveAccount(${acc.id}, -1)">⬅️</button>
+                <button onclick="moveAccount(${acc.id}, 1)">➡️</button>
+                <button onclick="openEditAccount(${acc.id})">✏️</button>
+                <button onclick="deleteAccount(${acc.id})">🗑️</button>
+            </div>
             <div class="icon-bg ${acc.iconClass}"><span>${acc.iconText}</span></div>
             <div class="card-text">
                 <span>${acc.name}</span>
@@ -307,7 +335,6 @@ function updateUI() {
         balancesContainer.appendChild(div);
     });
     
-    // Volver a añadir el botón de nueva cuenta al final
     const addAccBtn = document.createElement('div');
     addAccBtn.className = 'card add-action';
     addAccBtn.id = 'open-add-account-modal';
@@ -357,7 +384,6 @@ function updateStatsAndChart() {
     const categoriasGastos = {};
     let patrimonioNeto = 0;
 
-    // Calcular patrimonio sumando debitos y restando deudas de crédito
     appData.accounts.forEach(acc => {
         if(acc.type === 'debito') patrimonioNeto += acc.balance;
         if(acc.type === 'credito') patrimonioNeto -= acc.used;
@@ -404,5 +430,4 @@ function updateStatsAndChart() {
     });
 }
 
-// Iniciar aplicación
 updateUI();
