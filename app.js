@@ -1,7 +1,7 @@
 // 1. BASES MATEMÁTICAS CALCULADAS
 let baseCash = 553095;
-let baseCreditUsed = 1025810;
-let creditLimit = 1500000; 
+let baseCreditUsed = 723000; // Ajustado para que el uso final sea exactamente 348.595
+let creditLimit = 1000000;   // Límite total de la tarjeta 
 let baseSavings = 40000;
 
 let cash = 0;
@@ -9,7 +9,7 @@ let creditUsed = 0;
 let savings = 0;
 let myChart;
 
-// 2. TUS DATOS INICIALES (Exactamente como las fotos)
+// 2. TUS DATOS INICIALES
 const datosIniciales = [
     { id: 7, type: 'gasto-credito', category: 'otros', amount: 244317, description: 'TODO LO QUE SE DEBÍA PREVIAMENTE' },
     { id: 6, type: 'gasto-credito', category: 'ropa', amount: 39873, description: 'Shein' },
@@ -20,13 +20,13 @@ const datosIniciales = [
     { id: 1, type: 'ingreso', category: 'otros', amount: 3916, description: 'Transferir, retirar (Fuera -> Cash)' }
 ];
 
-// Cargamos la memoria. Si es la primera vez (v3), inyecta los datosIniciales.
-let records = JSON.parse(localStorage.getItem('wallet_records_v3')) || datosIniciales;
+// Cargamos la memoria (ahora en versión v4 para forzar el reinicio matemático)
+let records = JSON.parse(localStorage.getItem('wallet_records_v4')) || datosIniciales;
 
 // Elementos UI
 const cashEl = document.getElementById('cash-balance');
-const creditEl = document.getElementById('credit-balance');
-const creditAvailEl = document.getElementById('credit-available');
+const creditEl = document.getElementById('credit-balance'); // Ahora es el texto pequeño
+const creditAvailEl = document.getElementById('credit-available'); // Ahora es el texto grande
 const savingsEl = document.getElementById('savings-balance');
 const recordsList = document.getElementById('records-list');
 const headerTitle = document.getElementById('header-title');
@@ -88,12 +88,12 @@ form.addEventListener('submit', (e) => {
     const newRecord = { id: Date.now(), type, category, amount, description };
     records.unshift(newRecord); 
 
-    localStorage.setItem('wallet_records_v3', JSON.stringify(records));
+    localStorage.setItem('wallet_records_v4', JSON.stringify(records));
     updateUI();
     modal.style.display = 'none';
 });
 
-// 3. LÓGICA DE SALDOS (Ajustado para los nuevos tipos de transferencia)
+// 3. LÓGICA DE SALDOS 
 function recalculateBalances() {
     cash = baseCash;
     creditUsed = baseCreditUsed;
@@ -118,7 +118,7 @@ function recalculateBalances() {
 function deleteRecord(id) {
     if(confirm('¿Eliminar este registro? (Se ajustarán tus saldos automáticamente)')) {
         records = records.filter(r => r.id !== id);
-        localStorage.setItem('wallet_records_v3', JSON.stringify(records));
+        localStorage.setItem('wallet_records_v4', JSON.stringify(records));
         updateUI();
     }
 }
@@ -141,14 +141,15 @@ function updateUI() {
     recalculateBalances();
     
     cashEl.innerText = '$' + cash.toLocaleString('es-CL');
-    creditEl.innerText = '$' + creditUsed.toLocaleString('es-CL');
+    // Se invirtieron las posiciones para mostrar el saldo disponible en grande
     creditAvailEl.innerText = '$' + (creditLimit - creditUsed).toLocaleString('es-CL');
+    creditEl.innerText = '$' + creditUsed.toLocaleString('es-CL');
+    
     savingsEl.innerText = '$' + savings.toLocaleString('es-CL');
 
     recordsList.innerHTML = '';
     records.forEach(r => {
         const li = document.createElement('li');
-        // Define color y signo
         const isExpense = (r.type === 'gasto-debito' || r.type === 'gasto-credito' || r.type === 'retiro-cash');
         li.className = isExpense ? 'gasto' : 'ingreso';
         const sign = isExpense ? '-' : '';
