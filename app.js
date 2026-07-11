@@ -1,10 +1,27 @@
-// 1. VARIABLES INICIALES Y LOCALSTORAGE
-let cash = 208413;
-let creditLimit = 1000000;
+// 1. BASES MATEMÁTICAS CALCULADAS
+let baseCash = 553095;
+let baseCreditUsed = 1025810;
+let creditLimit = 1500000; 
+let baseSavings = 40000;
+
+let cash = 0;
 let creditUsed = 0;
-let savings = 40000;
-let records = JSON.parse(localStorage.getItem('wallet_records')) || [];
+let savings = 0;
 let myChart;
+
+// 2. TUS DATOS INICIALES (Exactamente como las fotos)
+const datosIniciales = [
+    { id: 7, type: 'gasto-credito', category: 'otros', amount: 244317, description: 'TODO LO QUE SE DEBÍA PREVIAMENTE' },
+    { id: 6, type: 'gasto-credito', category: 'ropa', amount: 39873, description: 'Shein' },
+    { id: 5, type: 'gasto-credito', category: 'comida', amount: 64405, description: 'Musuko' },
+    { id: 4, type: 'abono-credito', category: 'otros', amount: 348595, description: 'Transferir, retirar (Fuera -> TC)' },
+    { id: 3, type: 'retiro-cash', category: 'otros', amount: 104500, description: 'Transferir, retirar (Cash -> Fuera)' },
+    { id: 2, type: 'abono-credito', category: 'otros', amount: 374405, description: 'Transferir, retirar (Fuera -> TC)' },
+    { id: 1, type: 'ingreso', category: 'otros', amount: 3916, description: 'Transferir, retirar (Fuera -> Cash)' }
+];
+
+// Cargamos la memoria. Si es la primera vez (v3), inyecta los datosIniciales.
+let records = JSON.parse(localStorage.getItem('wallet_records_v3')) || datosIniciales;
 
 // Elementos UI
 const cashEl = document.getElementById('cash-balance');
@@ -20,13 +37,12 @@ const statGastos = document.getElementById('stat-gastos');
 const statFlujo = document.getElementById('stat-flujo');
 const statIngresos = document.getElementById('stat-ingresos');
 
-// Elementos Navegación
+// Navegación
 const btnInicio = document.getElementById('nav-inicio');
 const btnStats = document.getElementById('nav-estadisticas');
 const panelInicio = document.getElementById('inicio-panel');
 const panelStats = document.getElementById('estadisticas-panel');
 
-// 2. NAVEGACIÓN DE 2 PANELES
 btnInicio.addEventListener('click', () => {
     panelInicio.style.display = 'block';
     panelStats.style.display = 'none';
@@ -44,7 +60,7 @@ btnStats.addEventListener('click', () => {
     updateStatsAndChart();
 });
 
-// 3. MODAL Y FORMULARIO
+// Modal
 const modal = document.getElementById('modal');
 const btnAddCard = document.getElementById('open-add-modal');
 const btnClose = document.getElementById('close-modal');
@@ -72,16 +88,16 @@ form.addEventListener('submit', (e) => {
     const newRecord = { id: Date.now(), type, category, amount, description };
     records.unshift(newRecord); 
 
-    localStorage.setItem('wallet_records', JSON.stringify(records));
+    localStorage.setItem('wallet_records_v3', JSON.stringify(records));
     updateUI();
     modal.style.display = 'none';
 });
 
-// 4. LÓGICA DE SALDOS
+// 3. LÓGICA DE SALDOS (Ajustado para los nuevos tipos de transferencia)
 function recalculateBalances() {
-    cash = 208413;
-    creditUsed = 0;
-    savings = 40000;
+    cash = baseCash;
+    creditUsed = baseCreditUsed;
+    savings = baseSavings;
     
     records.forEach(r => {
         if (r.type === 'ingreso') {
@@ -91,14 +107,18 @@ function recalculateBalances() {
         } else if (r.type === 'gasto-credito') {
             cash -= r.amount; 
             creditUsed += r.amount;
+        } else if (r.type === 'abono-credito') {
+            creditUsed -= r.amount;
+        } else if (r.type === 'retiro-cash') {
+            cash -= r.amount;
         }
     });
 }
 
 function deleteRecord(id) {
-    if(confirm('¿Eliminar este registro?')) {
+    if(confirm('¿Eliminar este registro? (Se ajustarán tus saldos automáticamente)')) {
         records = records.filter(r => r.id !== id);
-        localStorage.setItem('wallet_records', JSON.stringify(records));
+        localStorage.setItem('wallet_records_v3', JSON.stringify(records));
         updateUI();
     }
 }
@@ -116,7 +136,7 @@ function editRecord(id) {
     modal.style.display = 'flex';
 }
 
-// 5. RENDERIZADO VISUAL
+// 4. RENDERIZADO VISUAL
 function updateUI() {
     recalculateBalances();
     
@@ -128,14 +148,18 @@ function updateUI() {
     recordsList.innerHTML = '';
     records.forEach(r => {
         const li = document.createElement('li');
-        li.className = r.type === 'ingreso' ? 'ingreso' : 'gasto';
+        // Define color y signo
+        const isExpense = (r.type === 'gasto-debito' || r.type === 'gasto-credito' || r.type === 'retiro-cash');
+        li.className = isExpense ? 'gasto' : 'ingreso';
+        const sign = isExpense ? '-' : '';
+
         li.innerHTML = `
             <div class="info">
                 <strong>${r.description}</strong> 
                 <small>${r.category.toUpperCase()}</small>
             </div>
             <div class="amount-actions">
-                <span class="amount">${r.type === 'ingreso' ? '' : '-'}$${r.amount.toLocaleString('es-CL')}</span>
+                <span class="amount">${sign}$${r.amount.toLocaleString('es-CL')}</span>
                 <div class="actions">
                     <button onclick="editRecord(${r.id})">✏️</button>
                     <button onclick="deleteRecord(${r.id})">🗑️</button>
@@ -154,9 +178,9 @@ function updateStatsAndChart() {
     const categorias = {};
 
     records.forEach(r => {
-        if (r.type === 'ingreso') {
-            totalIngresos += r.amount;
-        } else {
+        if (r.type === 'ingreso' || r.type === 'abono-credito') {
+            if (r.type === 'ingreso') totalIngresos += r.amount;
+        } else if (r.type === 'gasto-debito' || r.type === 'gasto-credito') {
             totalGastos += r.amount;
             categorias[r.category] = (categorias[r.category] || 0) + r.amount;
         }
@@ -194,5 +218,4 @@ function updateStatsAndChart() {
     });
 }
 
-// Iniciar aplicación
 updateUI();

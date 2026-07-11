@@ -19,22 +19,22 @@
                 <div class="icon-bg blue"><span>$</span></div>
                 <div class="card-text">
                     <span>CASH</span>
-                    <h3 id="cash-balance">$208.413</h3>
+                    <h3 id="cash-balance">$0</h3>
                 </div>
             </div>
             <div class="card savings">
                 <div class="icon-bg green"><span>A</span></div>
                 <div class="card-text">
-                    <span>AHORROS</span>
-                    <h3 id="savings-balance">$40.000</h3>
+                    <span>AHORRO</span>
+                    <h3 id="savings-balance">$0</h3>
                 </div>
             </div>
             <div class="card credit">
                 <div class="icon-bg orange"><span>C</span></div>
                 <div class="card-text">
-                    <span>DEUDA TC</span>
+                    <span>TARJETA DE CRÉDITO</span>
                     <h3 id="credit-balance">$0</h3>
-                    <small>Disp: <span id="credit-available">$1.000.000</span></small>
+                    <small>Disp: <span id="credit-available">$0</span></small>
                 </div>
             </div>
             <div class="card add-action" id="open-add-modal">
@@ -55,7 +55,7 @@
         <section class="stats-list">
             <div class="stat-item">
                 <div class="stat-info">
-                    <span>SALDO</span>
+                    <span>SALDO (CASH)</span>
                     <h3 id="stat-saldo">$0</h3>
                 </div>
             </div>
@@ -92,16 +92,18 @@
                 <select id="type" required>
                     <option value="gasto-debito">Gasto Débito</option>
                     <option value="gasto-credito">Gasto Crédito</option>
-                    <option value="ingreso">Ingreso</option>
+                    <option value="ingreso">Ingreso (Sumar a Cash)</option>
+                    <option value="abono-credito">Abono (Pago a Tarjeta)</option>
+                    <option value="retiro-cash">Retiro / Transferencia externa</option>
                 </select>
                 <select id="category" required>
-                    <option value="comida">Comida rápida</option>
-                    <option value="ropa">Ropa o vestimenta</option>
+                    <option value="otros">Otros</option>
+                    <option value="comida">Comida y bebida</option>
+                    <option value="ropa">Ropa y calzado</option>
                     <option value="ocio">Ocio</option>
                     <option value="compras">Compras diarias</option>
                     <option value="supermercado">Supermercado</option>
                     <option value="membresias">Membresías</option>
-                    <option value="otros">Otros</option>
                 </select>
                 <input type="number" id="amount" placeholder="Monto" required>
                 <input type="text" id="description" placeholder="Descripción" required>
