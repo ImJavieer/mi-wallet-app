@@ -1,250 +1,198 @@
-const btnAddAccount = document.getElementById('btn-add-account');
-const btnAddTrend = document.getElementById('btn-add-trend');
-const modal = document.getElementById('transaction-modal');
-const btnCloseModal = document.getElementById('btn-close-modal');
-const transactionForm = document.getElementById('transaction-form');
-const editIndexInput = document.getElementById('edit-index');
-const modalTitle = document.getElementById('modal-title');
+// 1. VARIABLES INICIALES Y LOCALSTORAGE
+let cash = 208413;
+let creditLimit = 1000000;
+let creditUsed = 0;
+let savings = 40000;
+let records = JSON.parse(localStorage.getItem('wallet_records')) || [];
+let myChart;
 
-const mainBalanceEl = document.getElementById('main-balance');
-const trendBalanceEl = document.getElementById('trend-balance');
-const savingsBalanceEl = document.getElementById('savings-balance');
-const creditBalanceEl = document.getElementById('credit-balance');
-const creditAvailableEl = document.getElementById('credit-available');
-const transactionsListEl = document.getElementById('transactions-list');
+// Elementos UI
+const cashEl = document.getElementById('cash-balance');
+const creditEl = document.getElementById('credit-balance');
+const creditAvailEl = document.getElementById('credit-available');
+const savingsEl = document.getElementById('savings-balance');
+const recordsList = document.getElementById('records-list');
+const headerTitle = document.getElementById('header-title');
 
-// Estado Inicial de la memoria
-let currentCash = parseFloat(localStorage.getItem('miWallet_RealCash'));
-if (isNaN(currentCash)) currentCash = 208413;
+// Elementos Estadísticas
+const statSaldo = document.getElementById('stat-saldo');
+const statGastos = document.getElementById('stat-gastos');
+const statFlujo = document.getElementById('stat-flujo');
+const statIngresos = document.getElementById('stat-ingresos');
 
-let currentSavings = parseFloat(localStorage.getItem('miWallet_RealSavings'));
-if (isNaN(currentSavings)) currentSavings = 40000;
+// Elementos Navegación
+const btnInicio = document.getElementById('nav-inicio');
+const btnStats = document.getElementById('nav-estadisticas');
+const panelInicio = document.getElementById('inicio-panel');
+const panelStats = document.getElementById('estadisticas-panel');
 
-let creditDebt = parseFloat(localStorage.getItem('miWallet_RealCredit')) || 0;
-let transactionsHistory = JSON.parse(localStorage.getItem('miWallet_RealHistory')) || [];
-const creditLimit = 1000000; 
+// 2. NAVEGACIÓN DE 2 PANELES
+btnInicio.addEventListener('click', () => {
+    panelInicio.style.display = 'block';
+    panelStats.style.display = 'none';
+    btnInicio.classList.add('active');
+    btnStats.classList.remove('active');
+    headerTitle.innerText = "Panel";
+});
 
-let myChart = null; // Variable para el gráfico
+btnStats.addEventListener('click', () => {
+    panelInicio.style.display = 'none';
+    panelStats.style.display = 'block';
+    btnStats.classList.add('active');
+    btnInicio.classList.remove('active');
+    headerTitle.innerText = "Estadísticas";
+    updateStatsAndChart();
+});
 
-function formatMoney(amount) {
-    return '$' + amount.toLocaleString('es-CL');
-}
+// 3. MODAL Y FORMULARIO
+const modal = document.getElementById('modal');
+const btnAddCard = document.getElementById('open-add-modal');
+const btnClose = document.getElementById('close-modal');
+const form = document.getElementById('record-form');
 
-function openModal(isEdit = false) {
-    modal.classList.add('active');
-    if (!isEdit) {
-        modalTitle.textContent = "Nuevo Registro";
-        editIndexInput.value = "-1";
-        transactionForm.reset();
+btnAddCard.addEventListener('click', () => {
+    form.reset();
+    delete form.dataset.editId;
+    modal.style.display = 'flex';
+});
+
+btnClose.addEventListener('click', () => modal.style.display = 'none');
+
+form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const type = document.getElementById('type').value;
+    const category = document.getElementById('category').value;
+    const amount = parseFloat(document.getElementById('amount').value);
+    const description = document.getElementById('description').value;
+
+    if (form.dataset.editId) {
+        records = records.filter(r => r.id !== parseInt(form.dataset.editId));
     }
-}
 
-function closeModal() {
-    modal.classList.remove('active');
-    transactionForm.reset();
-}
+    const newRecord = { id: Date.now(), type, category, amount, description };
+    records.unshift(newRecord); 
 
-function saveToLocalStorage() {
-    localStorage.setItem('miWallet_RealCash', currentCash);
-    localStorage.setItem('miWallet_RealSavings', currentSavings);
-    localStorage.setItem('miWallet_RealCredit', creditDebt);
-    localStorage.setItem('miWallet_RealHistory', JSON.stringify(transactionsHistory));
-}
+    localStorage.setItem('wallet_records', JSON.stringify(records));
+    updateUI();
+    modal.style.display = 'none';
+});
 
-function renderChart() {
-    const ctx = document.getElementById('balanceChart').getContext('2d');
-    if (myChart) myChart.destroy(); // Borra el gráfico viejo para redibujar
-
-    // Calcula el balance histórico hacia atrás para dibujarlo de izquierda a derecha
-    let tempBalance = currentCash;
-    let historicalBalances = [tempBalance];
-    let labels = ['Hoy'];
-
-    for (let i = 0; i < transactionsHistory.length; i++) {
-        let tx = transactionsHistory[i];
-        if (tx.type === 'gasto_debito' || tx.type === 'gasto_credito' || tx.type === 'traspaso_ahorro') {
-            tempBalance += tx.amount;
-        } else if (tx.type === 'ingreso') {
-            tempBalance -= tx.amount;
+// 4. LÓGICA DE SALDOS
+function recalculateBalances() {
+    cash = 208413;
+    creditUsed = 0;
+    savings = 40000;
+    
+    records.forEach(r => {
+        if (r.type === 'ingreso') {
+            cash += r.amount;
+        } else if (r.type === 'gasto-debito') {
+            cash -= r.amount;
+        } else if (r.type === 'gasto-credito') {
+            cash -= r.amount; 
+            creditUsed += r.amount;
         }
-        historicalBalances.push(tempBalance);
-        labels.push(tx.date || 'Antiguo');
-    }
+    });
+}
 
-    // Invertimos para que el tiempo vaya de izquierda a derecha
-    historicalBalances.reverse();
-    labels.reverse();
+function deleteRecord(id) {
+    if(confirm('¿Eliminar este registro?')) {
+        records = records.filter(r => r.id !== id);
+        localStorage.setItem('wallet_records', JSON.stringify(records));
+        updateUI();
+    }
+}
+
+function editRecord(id) {
+    const record = records.find(r => r.id === id);
+    if (!record) return;
+
+    document.getElementById('type').value = record.type;
+    document.getElementById('category').value = record.category;
+    document.getElementById('amount').value = record.amount;
+    document.getElementById('description').value = record.description;
+    
+    form.dataset.editId = id;
+    modal.style.display = 'flex';
+}
+
+// 5. RENDERIZADO VISUAL
+function updateUI() {
+    recalculateBalances();
+    
+    cashEl.innerText = '$' + cash.toLocaleString('es-CL');
+    creditEl.innerText = '$' + creditUsed.toLocaleString('es-CL');
+    creditAvailEl.innerText = '$' + (creditLimit - creditUsed).toLocaleString('es-CL');
+    savingsEl.innerText = '$' + savings.toLocaleString('es-CL');
+
+    recordsList.innerHTML = '';
+    records.forEach(r => {
+        const li = document.createElement('li');
+        li.className = r.type === 'ingreso' ? 'ingreso' : 'gasto';
+        li.innerHTML = `
+            <div class="info">
+                <strong>${r.description}</strong> 
+                <small>${r.category.toUpperCase()}</small>
+            </div>
+            <div class="amount-actions">
+                <span class="amount">${r.type === 'ingreso' ? '' : '-'}$${r.amount.toLocaleString('es-CL')}</span>
+                <div class="actions">
+                    <button onclick="editRecord(${r.id})">✏️</button>
+                    <button onclick="deleteRecord(${r.id})">🗑️</button>
+                </div>
+            </div>
+        `;
+        recordsList.appendChild(li);
+    });
+
+    if(panelStats.style.display === 'block') updateStatsAndChart();
+}
+
+function updateStatsAndChart() {
+    let totalIngresos = 0;
+    let totalGastos = 0;
+    const categorias = {};
+
+    records.forEach(r => {
+        if (r.type === 'ingreso') {
+            totalIngresos += r.amount;
+        } else {
+            totalGastos += r.amount;
+            categorias[r.category] = (categorias[r.category] || 0) + r.amount;
+        }
+    });
+
+    let flujo = totalIngresos - totalGastos;
+
+    statSaldo.innerText = '$' + cash.toLocaleString('es-CL');
+    statGastos.innerText = '$' + totalGastos.toLocaleString('es-CL');
+    statIngresos.innerText = '$' + totalIngresos.toLocaleString('es-CL');
+    
+    statFlujo.innerText = (flujo < 0 ? '-' : '') + '$' + Math.abs(flujo).toLocaleString('es-CL');
+    statFlujo.style.color = flujo < 0 ? '#f44336' : '#fff';
+
+    const ctx = document.getElementById('myChart');
+    if(!ctx) return;
+    if (myChart) myChart.destroy();
 
     myChart = new Chart(ctx, {
-        type: 'line',
+        type: 'doughnut',
         data: {
-            labels: labels,
+            labels: Object.keys(categorias).map(c => c.toUpperCase()),
             datasets: [{
-                label: 'CASH',
-                data: historicalBalances,
-                borderColor: '#007aff',
-                backgroundColor: 'rgba(0, 122, 255, 0.1)',
-                borderWidth: 2,
-                fill: true,
-                tension: 0.3,
-                pointRadius: 3
+                data: Object.values(categorias),
+                backgroundColor: ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40', '#E7E9ED'],
+                borderWidth: 0
             }]
         },
         options: {
             responsive: true,
-            maintainAspectRatio: false,
-            plugins: { legend: { display: false } },
-            scales: {
-                x: { display: false },
-                y: { ticks: { color: '#8e8e93', callback: value => '$' + value.toLocaleString('es-CL') } }
+            plugins: {
+                legend: { position: 'bottom', labels: { color: '#888', font: {size: 11} } }
             }
         }
     });
 }
 
-function updateUI() {
-    mainBalanceEl.textContent = formatMoney(currentCash);
-    trendBalanceEl.textContent = formatMoney(currentCash);
-    savingsBalanceEl.textContent = formatMoney(currentSavings);
-    creditBalanceEl.textContent = formatMoney(creditDebt);
-    
-    const availableCredit = creditLimit - creditDebt;
-    creditAvailableEl.textContent = 'Disp: ' + formatMoney(availableCredit);
-    
-    transactionsListEl.innerHTML = '';
-    transactionsHistory.forEach((tx, index) => {
-        const txElement = crearElementoTransaccion(tx, index);
-        transactionsListEl.appendChild(txElement);
-    });
-
-    renderChart();
-}
-
-function crearElementoTransaccion(tx, index) {
-    let isExpense = true;
-    let iconSymbol = '-';
-    let iconClass = '';
-    let typeLabel = '';
-
-    if (tx.type === 'gasto_debito') {
-        typeLabel = 'Débito'; iconClass = 'expense';
-    } else if (tx.type === 'gasto_credito') {
-        typeLabel = 'Crédito'; iconClass = 'credit'; 
-    } else if (tx.type === 'traspaso_ahorro') {
-        typeLabel = 'Ahorro'; iconClass = 'transfer';
-    } else if (tx.type === 'ingreso') {
-        typeLabel = 'Ingreso'; iconClass = 'income'; isExpense = false; iconSymbol = '+';
-    }
-
-    let amountText = isExpense ? `-$${tx.amount.toLocaleString('es-CL')}` : `+$${tx.amount.toLocaleString('es-CL')}`;
-    let amountClass = isExpense ? 'negative' : 'positive';
-    if (tx.type === 'traspaso_ahorro') amountClass = 'negative';
-
-    const newTx = document.createElement('div');
-    newTx.className = 'transaction-item';
-    
-    newTx.innerHTML = `
-        <div class="tx-info">
-            <div class="tx-icon ${iconClass}">${iconSymbol}</div>
-            <div class="tx-details">
-                <h4>${tx.category}</h4>
-                <p>${tx.desc} • ${typeLabel}</p>
-            </div>
-        </div>
-        <div class="tx-actions">
-            <div class="tx-amount ${amountClass}">${amountText}</div>
-            <div class="action-buttons">
-                <button class="edit-btn" title="Editar">✏️</button>
-                <button class="delete-btn" title="Eliminar">🗑️</button>
-            </div>
-        </div>
-    `;
-
-    newTx.querySelector('.delete-btn').addEventListener('click', () => borrarTransaccion(index));
-    newTx.querySelector('.edit-btn').addEventListener('click', () => prepararEdicion(index));
-
-    return newTx;
-}
-
-// -----------------------------------------
-// LÓGICA DE EDICIÓN Y BORRADO
-// -----------------------------------------
-
-function revertirMatematica(tx) {
-    if (tx.type === 'gasto_debito') currentCash += tx.amount;
-    else if (tx.type === 'gasto_credito') { currentCash += tx.amount; creditDebt -= tx.amount; }
-    else if (tx.type === 'ingreso') currentCash -= tx.amount;
-    else if (tx.type === 'traspaso_ahorro') { currentCash += tx.amount; currentSavings -= tx.amount; }
-}
-
-function aplicarMatematica(type, amount) {
-    if (type === 'gasto_debito') currentCash -= amount;
-    else if (type === 'gasto_credito') { currentCash -= amount; creditDebt += amount; }
-    else if (type === 'ingreso') currentCash += amount;
-    else if (type === 'traspaso_ahorro') { currentCash -= amount; currentSavings += amount; }
-}
-
-function borrarTransaccion(index) {
-    if (!confirm("¿Eliminar registro?")) return;
-    revertirMatematica(transactionsHistory[index]);
-    transactionsHistory.splice(index, 1);
-    saveToLocalStorage();
-    updateUI();
-}
-
-function prepararEdicion(index) {
-    const tx = transactionsHistory[index];
-    document.getElementById('type-select').value = tx.type;
-    document.getElementById('category-select').value = tx.category;
-    document.getElementById('amount-input').value = tx.amount;
-    document.getElementById('desc-input').value = tx.desc;
-    
-    editIndexInput.value = index;
-    modalTitle.textContent = "Editar Registro";
-    openModal(true);
-}
-
-transactionForm.addEventListener('submit', function(event) {
-    event.preventDefault();
-
-    const type = document.getElementById('type-select').value;
-    const category = document.getElementById('category-select').value;
-    const amount = parseFloat(document.getElementById('amount-input').value);
-    const desc = document.getElementById('desc-input').value;
-    const editIndex = parseInt(editIndexInput.value);
-
-    if (isNaN(amount) || amount <= 0) return alert("Monto inválido.");
-
-    // Si estamos editando, primero deshacemos el error matemático viejo
-    if (editIndex !== -1) {
-        revertirMatematica(transactionsHistory[editIndex]);
-    }
-
-    // Aplicamos el nuevo valor correcto
-    aplicarMatematica(type, amount);
-
-    const txData = {
-        type: type,
-        category: category,
-        amount: amount,
-        desc: desc,
-        date: new Date().toLocaleDateString('es-CL') // Fecha actual para el gráfico
-    };
-
-    // Actualizamos el registro viejo o creamos uno nuevo
-    if (editIndex !== -1) {
-        transactionsHistory[editIndex] = txData;
-    } else {
-        transactionsHistory.unshift(txData);
-    }
-
-    saveToLocalStorage();
-    updateUI();
-    closeModal();
-});
-
-btnAddAccount.addEventListener('click', () => openModal(false));
-btnAddTrend.addEventListener('click', () => openModal(false));
-btnCloseModal.addEventListener('click', closeModal);
-
+// Iniciar aplicación
 updateUI();
