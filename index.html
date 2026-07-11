@@ -14,39 +14,20 @@
     </header>
 
     <main id="inicio-panel" class="panel active">
-        <section class="balances">
-            <div class="card cash">
-                <div class="icon-bg blue"><span>$</span></div>
-                <div class="card-text">
-                    <span>CASH</span>
-                    <h3 id="cash-balance">$0</h3>
-                </div>
-            </div>
-            <div class="card savings">
-                <div class="icon-bg green"><span>A</span></div>
-                <div class="card-text">
-                    <span>AHORRO</span>
-                    <h3 id="savings-balance">$0</h3>
-                </div>
-            </div>
-            <div class="card credit">
-                <div class="icon-bg orange"><span>C</span></div>
-                <div class="card-text">
-                    <span>TARJETA DE CRÉDITO</span>
-                    <h3 id="credit-available">$0</h3>
-                    <small>Utilizado: <span id="credit-balance">$0</span></small>
-                </div>
-            </div>
-            <div class="card add-action" id="open-add-modal">
+        <section class="balances" id="balances-container">
+            <div class="card add-action" id="open-add-account-modal">
                 <div class="icon-bg blue add-icon"><span>+</span></div>
                 <div class="card-text">
-                    <span style="color: #aaa;">AGREGAR</span>
+                    <span style="color: #aaa;">AGREGAR CUENTA</span>
                 </div>
             </div>
         </section>
 
         <section class="recent-records">
-            <h3>Últimos registros</h3>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <h3>Últimos registros</h3>
+                <button id="open-add-modal" style="background: #2196f3; color: white; border: none; border-radius: 50%; width: 30px; height: 30px; font-size: 18px; cursor: pointer;">+</button>
+            </div>
             <ul id="records-list"></ul>
         </section>
     </main>
@@ -55,7 +36,7 @@
         <section class="stats-list">
             <div class="stat-item">
                 <div class="stat-info">
-                    <span>SALDO (CASH)</span>
+                    <span>PATRIMONIO NETO</span>
                     <h3 id="stat-saldo">$0</h3>
                 </div>
             </div>
@@ -90,24 +71,46 @@
             <h3>Registro</h3>
             <form id="record-form">
                 <select id="type" required>
-                    <option value="gasto-debito">Gasto Débito</option>
-                    <option value="gasto-credito">Gasto Crédito</option>
-                    <option value="ingreso">Ingreso (Sumar a Cash)</option>
-                    <option value="abono-credito">Abono (Pago a Tarjeta)</option>
-                    <option value="retiro-cash">Retiro / Transferencia externa</option>
-                </select>
+                    <option value="gasto">Gasto</option>
+                    <option value="ingreso">Ingreso</option>
+                    </select>
+                
+                <select id="account-select" required>
+                    </select>
+
                 <select id="category" required>
-                    <option value="otros">Otros</option>
-                    <option value="comida">Comida y bebida</option>
-                    <option value="ropa">Ropa y calzado</option>
-                    <option value="ocio">Ocio</option>
-                    <option value="compras">Compras diarias</option>
-                    <option value="supermercado">Supermercado</option>
-                    <option value="membresias">Membresías</option>
-                </select>
+                    </select>
+                
+                <input type="text" id="new-category-input" placeholder="Nombre de nueva categoría" style="display: none;">
+
                 <input type="number" id="amount" placeholder="Monto" required>
                 <input type="text" id="description" placeholder="Descripción" required>
                 <button type="submit">Guardar</button>
+            </form>
+        </div>
+    </div>
+
+    <div id="account-modal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <span id="close-account-modal">X</span>
+            <h3>Nueva Cuenta</h3>
+            <form id="account-form">
+                <input type="text" id="acc-name" placeholder="Nombre de la cuenta (ej. CASH, CMR)" required>
+                <select id="acc-type" required>
+                    <option value="debito">Débito / Efectivo / Ahorro</option>
+                    <option value="credito">Tarjeta de Crédito</option>
+                </select>
+                
+                <div id="debito-fields">
+                    <input type="number" id="acc-balance" placeholder="Saldo actual" value="0">
+                </div>
+                
+                <div id="credito-fields" style="display: none;">
+                    <input type="number" id="acc-limit" placeholder="Cupo total de la tarjeta">
+                    <input type="number" id="acc-used" placeholder="Monto utilizado actualmente">
+                </div>
+
+                <button type="submit">Crear Cuenta</button>
             </form>
         </div>
     </div>

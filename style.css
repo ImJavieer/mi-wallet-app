@@ -38,6 +38,7 @@ main.panel {
     flex-direction: column; 
     justify-content: space-between;
     min-height: 140px;
+    position: relative;
 }
 .icon-bg {
     width: 40px; height: 40px; border-radius: 10px;
@@ -47,15 +48,28 @@ main.panel {
 .icon-bg.blue { background-color: #2196f3; }
 .icon-bg.green { background-color: #4caf50; }
 .icon-bg.orange { background-color: #ff9800; }
+.icon-bg.purple { background-color: #9c27b0; }
 .icon-bg.add-icon { border-radius: 50%; margin: 0 auto 15px auto;}
 
-.card-text span { font-size: 11px; color: #888; font-weight: bold; letter-spacing: 0.5px;}
+.card-text span { font-size: 11px; color: #888; font-weight: bold; letter-spacing: 0.5px; text-transform: uppercase;}
 .card-text h3 { font-size: 22px; margin-top: 5px; }
 .card-text small { font-size: 11px; color: #666; display: block; margin-top: 5px; }
 
 .add-action { align-items: center; justify-content: center; cursor: pointer; text-align: center;}
 
-.recent-records h3 { margin-bottom: 15px; font-size: 18px;}
+/* Botón para eliminar cuenta */
+.delete-account-btn {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: none;
+    border: none;
+    color: #666;
+    font-size: 14px;
+    cursor: pointer;
+}
+
+.recent-records h3 { font-size: 18px;}
 ul { list-style: none; }
 li { 
     background-color: #151517; 
@@ -99,10 +113,11 @@ li.gasto .amount { color: #f44336; font-weight: bold; }
 }
 .modal-content { 
     background-color: #151517; padding: 25px; border-radius: 16px; width: 90%; max-width: 400px; position: relative; 
+    max-height: 90vh; overflow-y: auto;
 }
-#close-modal { position: absolute; top: 15px; right: 20px; cursor: pointer; font-weight: bold; font-size: 18px; color: #888;}
+.modal-content span[id^="close-"] { position: absolute; top: 15px; right: 20px; cursor: pointer; font-weight: bold; font-size: 18px; color: #888;}
 form { display: flex; flex-direction: column; gap: 15px; margin-top: 20px; }
-form select, form input, form button { padding: 12px; border-radius: 8px; border: none; font-size: 15px; background-color: #222; color: #fff;}
+form select, form input, form button { padding: 12px; border-radius: 8px; border: none; font-size: 15px; background-color: #222; color: #fff; width: 100%;}
 form button { background-color: #2196f3; color: white; font-weight: bold; cursor: pointer; margin-top: 10px;}
 
 .bottom-nav { 
