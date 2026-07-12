@@ -1,433 +1,372 @@
-// 1. ESTRUCTURAS DE DATOS Y MEMORIA
-// Mantenemos v5 para que reconozca los datos de tu teléfono y no borre nada.
-const STORAGE_KEY = 'wallet_v5';
+// MEMORIA v6 - Inyectando tus saldos actuales reales
+const STORAGE_KEY = 'wallet_v6';
 
-let appData = JSON.parse(localStorage.getItem(STORAGE_KEY)) || {
-    accounts: [
-        { id: 1, name: 'CASH', type: 'debito', balance: 103916, initialBalance: 103916, iconClass: 'blue', iconText: '$' },
-        { id: 2, name: 'AHORRO', type: 'debito', balance: 40000, initialBalance: 40000, iconClass: 'green', iconText: 'A' },
-        { id: 3, name: 'TARJETA DE CRÉDITO', type: 'credito', limit: 1000000, used: 348595, initialUsed: 348595, iconClass: 'orange', iconText: 'C' }
+let appData = JSON.parse(localStorage.getItem(STORAGE_KEY));
+
+if (!appData) {
+  appData = {
+    cuentas: [
+      { id: 1, name: 'CASH', type: 'debito', balance: 103916, color: '#3b82f6', letter: '$' },
+      { id: 2, name: 'EFECTIVO', type: 'debito', balance: 15000, color: '#a855f7', letter: 'E' },
+      { id: 3, name: 'TARJETA DE CRÉDITO', type: 'credito', limit: 1000000, available: 651405, used: 348595, color: '#f59e0b', letter: 'C' },
+      { id: 4, name: 'CMR', type: 'credito', limit: 300000, available: 201388, used: 98612, color: '#f59e0b', letter: 'C' },
+      { id: 5, name: 'AHORRO', type: 'debito', balance: 40000, color: '#22c55e', letter: 'A' }
     ],
-    categories: {
-        gasto: ['comida', 'ropa', 'ocio', 'compras diarias', 'supermercado', 'membresías', 'otros'],
-        ingreso: ['sueldo', 'venta', 'otros']
-    },
-    records: []
-};
+    categorias: [
+      { id: 'comida', nombre: 'Comida', tipo: 'gasto' },
+      { id: 'ropa', nombre: 'Ropa', tipo: 'gasto' },
+      { id: 'supermercado', nombre: 'Supermercado', tipo: 'gasto' },
+      { id: 'sueldo', nombre: 'Sueldo', tipo: 'ingreso' },
+      { id: 'otro', nombre: 'Otro...', tipo: 'ambos' },
+      { id: 'nueva', nombre: '+ Nueva Categoría', tipo: 'ambos' }
+    ],
+    registros: []
+  };
+  guardarDatos();
+}
 
-let myChart;
+function guardarDatos() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(appData));
+}
 
-// 2. ELEMENTOS UI
-const balancesContainer = document.getElementById('balances-container');
-const recordsList = document.getElementById('records-list');
-const headerTitle = document.getElementById('header-title');
+function formatearDinero(monto) {
+  return "$" + Math.round(monto).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+}
 
-// Estadísticas
-const statSaldo = document.getElementById('stat-saldo');
-const statGastos = document.getElementById('stat-gastos');
-const statFlujo = document.getElementById('stat-flujo');
-const statIngresos = document.getElementById('stat-ingresos');
+// ---------------- RENDERIZAR CUENTAS CON KEBAB MENU ----------------
+function renderCuentas() {
+  const contenedor = document.getElementById('cuentas-contenedor');
+  contenedor.innerHTML = '';
 
-// Navegación
-const btnInicio = document.getElementById('nav-inicio');
-const btnStats = document.getElementById('nav-estadisticas');
-const panelInicio = document.getElementById('inicio-panel');
-const panelStats = document.getElementById('estadisticas-panel');
-
-// Modales
-const recordModal = document.getElementById('modal');
-const accountModal = document.getElementById('account-modal');
-const editAccountModal = document.getElementById('edit-account-modal');
-
-const btnAddRecord = document.getElementById('open-add-modal');
-const btnCloseRecord = document.getElementById('close-modal');
-const btnCloseAccount = document.getElementById('close-account-modal');
-const closeEditAccountBtn = document.getElementById('close-edit-account-modal');
-
-// Formularios
-const recordForm = document.getElementById('record-form');
-const accountForm = document.getElementById('account-form');
-const editAccountForm = document.getElementById('edit-account-form');
-
-// Inputs
-const typeSelect = document.getElementById('type');
-const accountSelect = document.getElementById('account-select');
-const categorySelect = document.getElementById('category');
-const newCategoryInput = document.getElementById('new-category-input');
-
-// 3. NAVEGACIÓN
-btnInicio.addEventListener('click', () => {
-    panelInicio.style.display = 'block';
-    panelStats.style.display = 'none';
-    btnInicio.classList.add('active');
-    btnStats.classList.remove('active');
-    headerTitle.innerText = "Panel";
-});
-
-btnStats.addEventListener('click', () => {
-    panelInicio.style.display = 'none';
-    panelStats.style.display = 'block';
-    btnStats.classList.add('active');
-    btnInicio.classList.remove('active');
-    headerTitle.innerText = "Estadísticas";
-    updateStatsAndChart();
-});
-
-// 4. LÓGICA DE MODALES
-btnAddRecord.addEventListener('click', () => {
-    recordForm.reset();
-    delete recordForm.dataset.editId;
-    updateRecordFormOptions();
-    recordModal.style.display = 'flex';
-});
-btnCloseRecord.addEventListener('click', () => recordModal.style.display = 'none');
-
-// Lógica para cerrar modal de nueva cuenta (El botón de abrir se genera por JS)
-btnCloseAccount.addEventListener('click', () => accountModal.style.display = 'none');
-
-document.getElementById('acc-type').addEventListener('change', function() {
-    if(this.value === 'debito') {
-        document.getElementById('debito-fields').style.display = 'block';
-        document.getElementById('credito-fields').style.display = 'none';
+  appData.cuentas.forEach((cuenta, index) => {
+    let htmlValores = '';
+    
+    if (cuenta.type === 'debito') {
+      htmlValores = `<div class="amount">${formatearDinero(cuenta.balance)}</div>`;
     } else {
-        document.getElementById('debito-fields').style.display = 'none';
-        document.getElementById('credito-fields').style.display = 'block';
-    }
-});
-
-typeSelect.addEventListener('change', updateRecordFormOptions);
-categorySelect.addEventListener('change', function() {
-    if(this.value === 'nueva') {
-        newCategoryInput.style.display = 'block';
-        newCategoryInput.required = true;
-    } else {
-        newCategoryInput.style.display = 'none';
-        newCategoryInput.required = false;
-        newCategoryInput.value = '';
-    }
-});
-
-function updateRecordFormOptions() {
-    accountSelect.innerHTML = '';
-    appData.accounts.forEach(acc => {
-        const option = document.createElement('option');
-        option.value = acc.id;
-        option.innerText = acc.name;
-        accountSelect.appendChild(option);
-    });
-
-    categorySelect.innerHTML = '';
-    const currentType = typeSelect.value;
-    const cats = appData.categories[currentType];
-    
-    cats.forEach(c => {
-        const option = document.createElement('option');
-        option.value = c;
-        option.innerText = c.charAt(0).toUpperCase() + c.slice(1);
-        categorySelect.appendChild(option);
-    });
-
-    const newCatOption = document.createElement('option');
-    newCatOption.value = 'nueva';
-    newCatOption.innerText = '+ Nueva Categoría...';
-    newCatOption.style.fontWeight = 'bold';
-    categorySelect.appendChild(newCatOption);
-
-    newCategoryInput.style.display = 'none';
-    newCategoryInput.required = false;
-}
-
-// 5. GUARDAR Y MANEJAR DATOS
-function saveData() {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(appData));
-    updateUI();
-}
-
-// Crear Cuenta
-accountForm.addEventListener('submit', (e) => {
-    e.preventDefault();
-    const name = document.getElementById('acc-name').value.toUpperCase();
-    const type = document.getElementById('acc-type').value;
-    const colors = ['blue', 'green', 'orange', 'purple'];
-    const randomColor = colors[Math.floor(Math.random() * colors.length)];
-    const letter = name.charAt(0);
-
-    const newAccount = {
-        id: Date.now(),
-        name: name,
-        type: type,
-        iconClass: randomColor,
-        iconText: letter
-    };
-
-    if(type === 'debito') {
-        const bal = parseFloat(document.getElementById('acc-balance').value) || 0;
-        newAccount.balance = bal;
-        newAccount.initialBalance = bal;
-    } else {
-        const limit = parseFloat(document.getElementById('acc-limit').value) || 0;
-        const used = parseFloat(document.getElementById('acc-used').value) || 0;
-        newAccount.limit = limit;
-        newAccount.used = used;
-        newAccount.initialUsed = used;
+      htmlValores = `
+        <div class="amount">${formatearDinero(cuenta.available)}</div>
+        <div class="sub-amount">Utilizado: ${formatearDinero(cuenta.used)}</div>
+      `;
     }
 
-    appData.accounts.push(newAccount);
-    saveData();
-    accountModal.style.display = 'none';
-});
-
-// Guardar Registro
-recordForm.addEventListener('submit', (e) => {
-    e.preventDefault();
-    const type = typeSelect.value;
-    const accountId = parseInt(accountSelect.value);
-    let category = categorySelect.value;
-    const amount = parseFloat(document.getElementById('amount').value);
-    const description = document.getElementById('description').value;
-
-    if(category === 'nueva') {
-        category = newCategoryInput.value.toLowerCase().trim();
-        if(category && !appData.categories[type].includes(category)) {
-            appData.categories[type].push(category);
-        }
-    }
-
-    if (recordForm.dataset.editId) {
-        appData.records = appData.records.filter(r => r.id !== parseInt(recordForm.dataset.editId));
-    }
-
-    const newRecord = { id: Date.now(), type, accountId, category, amount, description, date: new Date().toISOString() };
-    appData.records.unshift(newRecord); 
-
-    saveData();
-    recordModal.style.display = 'none';
-});
-
-function deleteRecord(id) {
-    if(confirm('¿Eliminar este registro?')) {
-        appData.records = appData.records.filter(r => r.id !== id);
-        saveData();
-    }
-}
-
-function deleteAccount(id) {
-    const hasRecords = appData.records.some(r => r.accountId === id);
-    if(hasRecords) {
-        alert("No puedes eliminar una cuenta que tiene transacciones asociadas. Elimina los registros primero.");
-        return;
-    }
-    
-    if(confirm('¿Estás seguro de eliminar esta cuenta?')) {
-        appData.accounts = appData.accounts.filter(a => a.id !== id);
-        saveData();
-    }
-}
-
-function editRecord(id) {
-    const record = appData.records.find(r => r.id === id);
-    if (!record) return;
-
-    typeSelect.value = record.type;
-    updateRecordFormOptions();
-    
-    accountSelect.value = record.accountId;
-    categorySelect.value = record.category;
-    document.getElementById('amount').value = record.amount;
-    document.getElementById('description').value = record.description;
-    
-    recordForm.dataset.editId = id;
-    recordModal.style.display = 'flex';
-}
-
-// Funciones nuevas: Mover y Editar Cuenta
-function moveAccount(id, direction) {
-    const index = appData.accounts.findIndex(a => a.id === id);
-    if (index < 0) return;
-    const newIndex = index + direction;
-    if (newIndex < 0 || newIndex >= appData.accounts.length) return;
-    
-    // Intercambiar posiciones en el arreglo
-    const temp = appData.accounts[index];
-    appData.accounts[index] = appData.accounts[newIndex];
-    appData.accounts[newIndex] = temp;
-    
-    saveData();
-}
-
-let editAccountId = null;
-function openEditAccount(id) {
-    const acc = appData.accounts.find(a => a.id === id);
-    if (!acc) return;
-    editAccountId = id;
-    document.getElementById('edit-acc-name').value = acc.name;
-    editAccountModal.style.display = 'flex';
-}
-
-closeEditAccountBtn.addEventListener('click', () => editAccountModal.style.display = 'none');
-
-editAccountForm.addEventListener('submit', (e) => {
-    e.preventDefault();
-    const acc = appData.accounts.find(a => a.id === editAccountId);
-    if (acc) {
-        acc.name = document.getElementById('edit-acc-name').value.toUpperCase();
-        acc.iconText = acc.name.charAt(0);
-        saveData();
-    }
-    editAccountModal.style.display = 'none';
-});
-
-// 6. MATEMÁTICAS Y RENDERIZADO
-function recalculateBalances() {
-    appData.accounts.forEach(acc => {
-        if(acc.type === 'debito') acc.balance = acc.initialBalance;
-        if(acc.type === 'credito') acc.used = acc.initialUsed;
-    });
-
-    appData.records.forEach(r => {
-        const acc = appData.accounts.find(a => a.id === r.accountId);
-        if(!acc) return;
-
-        if(acc.type === 'debito') {
-            if(r.type === 'ingreso') acc.balance += r.amount;
-            if(r.type === 'gasto') acc.balance -= r.amount;
-        } else if (acc.type === 'credito') {
-            if(r.type === 'gasto') acc.used += r.amount;
-            if(r.type === 'ingreso') acc.used -= r.amount;
-        }
-    });
-}
-
-function updateUI() {
-    recalculateBalances();
-    
-    // Renderizar Cuentas
-    balancesContainer.innerHTML = '';
-    appData.accounts.forEach(acc => {
-        const div = document.createElement('div');
-        div.className = `card ${acc.name.toLowerCase()}`;
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.innerHTML = `
+      <div class="card-header">
+        <div class="icon" style="background-color: ${cuenta.color}">${cuenta.letter}</div>
+        <button class="btn-kebab" onclick="toggleMenu(${cuenta.id}, event)">&#8942;</button>
         
-        let balanceHtml = '';
-        if(acc.type === 'debito') {
-            balanceHtml = `<h3 style="color: ${acc.balance < 0 ? '#f44336' : '#fff'}">$${acc.balance.toLocaleString('es-CL')}</h3>`;
-        } else {
-            const avail = acc.limit - acc.used;
-            balanceHtml = `
-                <h3 style="color: ${avail < 0 ? '#f44336' : '#fff'}">$${avail.toLocaleString('es-CL')}</h3>
-                <small>Utilizado: $${acc.used.toLocaleString('es-CL')}</small>
-            `;
-        }
-
-        // Incorporamos las flechas, el lápiz para editar y el basurero
-        div.innerHTML = `
-            <div class="account-actions">
-                <button onclick="moveAccount(${acc.id}, -1)">⬅️</button>
-                <button onclick="moveAccount(${acc.id}, 1)">➡️</button>
-                <button onclick="openEditAccount(${acc.id})">✏️</button>
-                <button onclick="deleteAccount(${acc.id})">🗑️</button>
-            </div>
-            <div class="icon-bg ${acc.iconClass}"><span>${acc.iconText}</span></div>
-            <div class="card-text">
-                <span>${acc.name}</span>
-                ${balanceHtml}
-            </div>
-        `;
-        balancesContainer.appendChild(div);
-    });
-    
-    const addAccBtn = document.createElement('div');
-    addAccBtn.className = 'card add-action';
-    addAccBtn.id = 'open-add-account-modal';
-    addAccBtn.innerHTML = `
-        <div class="icon-bg blue add-icon"><span>+</span></div>
-        <div class="card-text"><span style="color: #aaa;">AGREGAR CUENTA</span></div>
+        <div class="menu-flotante" id="menu-${cuenta.id}">
+          <button onclick="moverCuenta(${index}, -1)">Mover Atrás</button>
+          <button onclick="moverCuenta(${index}, 1)">Mover Adelante</button>
+          <button onclick="editarNombreCuenta(${cuenta.id})">Renombrar</button>
+          <button onclick="eliminarCuenta(${cuenta.id})">Eliminar</button>
+        </div>
+      </div>
+      <div class="label">${cuenta.name}</div>
+      ${htmlValores}
     `;
-    addAccBtn.addEventListener('click', () => {
-        accountForm.reset();
-        document.getElementById('debito-fields').style.display = 'block';
-        document.getElementById('credito-fields').style.display = 'none';
-        accountModal.style.display = 'flex';
-    });
-    balancesContainer.appendChild(addAccBtn);
+    contenedor.appendChild(card);
+  });
 
-    // Renderizar Registros
-    recordsList.innerHTML = '';
-    appData.records.forEach(r => {
-        const li = document.createElement('li');
-        li.className = r.type === 'gasto' ? 'gasto' : 'ingreso';
-        const sign = r.type === 'gasto' ? '-' : '';
-        const acc = appData.accounts.find(a => a.id === r.accountId);
-        const accName = acc ? acc.name : 'Cuenta Eliminada';
-
-        li.innerHTML = `
-            <div class="info">
-                <strong>${r.description}</strong> 
-                <small>${r.category.toUpperCase()} • ${accName}</small>
-            </div>
-            <div class="amount-actions">
-                <span class="amount">${sign}$${r.amount.toLocaleString('es-CL')}</span>
-                <div class="actions">
-                    <button onclick="editRecord(${r.id})">✏️</button>
-                    <button onclick="deleteRecord(${r.id})">🗑️</button>
-                </div>
-            </div>
-        `;
-        recordsList.appendChild(li);
-    });
-
-    if(panelStats.style.display === 'block') updateStatsAndChart();
+  const btnAdd = document.createElement('button');
+  btnAdd.className = 'btn-add-account';
+  btnAdd.onclick = abrirModalCuenta;
+  btnAdd.innerHTML = `
+    <div class="plus-icon">+</div>
+    <div class="label">AGREGAR CUENTA</div>
+  `;
+  contenedor.appendChild(btnAdd);
 }
 
-function updateStatsAndChart() {
-    let totalIngresos = 0;
-    let totalGastos = 0;
-    const categoriasGastos = {};
-    let patrimonioNeto = 0;
+// ---------------- LÓGICA DEL MENÚ DE TRES PUNTITOS ----------------
+function toggleMenu(id, event) {
+  event.stopPropagation();
+  // Cerrar otros menús abiertos
+  document.querySelectorAll('.menu-flotante').forEach(menu => {
+    if(menu.id !== `menu-${id}`) menu.classList.remove('activo');
+  });
+  
+  const menu = document.getElementById(`menu-${id}`);
+  if(menu) menu.classList.toggle('activo');
+}
 
-    appData.accounts.forEach(acc => {
-        if(acc.type === 'debito') patrimonioNeto += acc.balance;
-        if(acc.type === 'credito') patrimonioNeto -= acc.used;
+// Cerrar menú si tocas afuera
+document.addEventListener('click', function(e) {
+  if (!e.target.closest('.btn-kebab') && !e.target.closest('.menu-flotante')) {
+    document.querySelectorAll('.menu-flotante').forEach(menu => {
+      menu.classList.remove('activo');
     });
+  }
+});
 
-    appData.records.forEach(r => {
-        if (r.type === 'ingreso') {
-            totalIngresos += r.amount;
-        } else if (r.type === 'gasto') {
-            totalGastos += r.amount;
-            categoriasGastos[r.category] = (categoriasGastos[r.category] || 0) + r.amount;
-        }
-    });
+// ---------------- FUNCIONES DE GESTIÓN DE CUENTAS ----------------
+function moverCuenta(index, direccion) {
+  const nuevoIndex = index + direccion;
+  if (nuevoIndex >= 0 && nuevoIndex < appData.cuentas.length) {
+    const temp = appData.cuentas[index];
+    appData.cuentas[index] = appData.cuentas[nuevoIndex];
+    appData.cuentas[nuevoIndex] = temp;
+    guardarDatos();
+    renderCuentas();
+  }
+}
 
-    let flujo = totalIngresos - totalGastos;
+function editarNombreCuenta(id) {
+  const cuenta = appData.cuentas.find(c => c.id === id);
+  const nuevoNombre = prompt("Ingresa el nuevo nombre para la cuenta:", cuenta.name);
+  if (nuevoNombre && nuevoNombre.trim() !== "") {
+    cuenta.name = nuevoNombre.toUpperCase();
+    guardarDatos();
+    renderCuentas();
+  }
+}
 
-    statSaldo.innerText = '$' + patrimonioNeto.toLocaleString('es-CL');
-    statGastos.innerText = '$' + totalGastos.toLocaleString('es-CL');
-    statIngresos.innerText = '$' + totalIngresos.toLocaleString('es-CL');
+function eliminarCuenta(id) {
+  if(confirm("¿Seguro que deseas eliminar esta cuenta? Sus saldos desaparecerán.")) {
+    appData.cuentas = appData.cuentas.filter(c => c.id !== id);
+    guardarDatos();
+    renderCuentas();
+  }
+}
+
+// ---------------- LÓGICA DE REGISTROS Y DESCRIPCIÓN ----------------
+function cargarSelectCuentas() {
+  const select = document.getElementById('cuenta-movimiento');
+  select.innerHTML = '';
+  appData.cuentas.forEach(cuenta => {
+    select.innerHTML += `<option value="${cuenta.id}">${cuenta.name}</option>`;
+  });
+}
+
+function verificarTipo() {
+  const tipo = document.getElementById('tipo-movimiento').value;
+  const selectCat = document.getElementById('categoria');
+  selectCat.innerHTML = '';
+  
+  appData.categorias.forEach(cat => {
+    if (cat.tipo === tipo || cat.tipo === 'ambos') {
+      selectCat.innerHTML += `<option value="${cat.id}">${cat.nombre}</option>`;
+    }
+  });
+  verificarCategoria();
+}
+
+function verificarCategoria() {
+  const categoria = document.getElementById('categoria').value;
+  const campoOtro = document.getElementById('campo-otro-desc');
+  const labelOtro = document.getElementById('label-otro');
+  
+  if (categoria === 'otro') {
+    campoOtro.classList.remove('hidden');
+    labelOtro.innerText = "Descripción del gasto";
+  } else if (categoria === 'nueva') {
+    campoOtro.classList.remove('hidden');
+    labelOtro.innerText = "Nombre de la Nueva Categoría";
+  } else {
+    campoOtro.classList.add('hidden');
+    document.getElementById('descripcion-otro').value = '';
+  }
+}
+
+function guardarRegistro() {
+  const tipo = document.getElementById('tipo-movimiento').value;
+  const idCuenta = parseInt(document.getElementById('cuenta-movimiento').value);
+  let idCategoria = document.getElementById('categoria').value;
+  const descripcionInput = document.getElementById('descripcion-otro').value;
+  const monto = parseFloat(document.getElementById('monto').value);
+
+  if (!monto || monto <= 0) return alert('Ingresa un monto válido');
+
+  let nombreMostrado = appData.categorias.find(c => c.id === idCategoria)?.nombre || 'Registro';
+
+  // Manejo de categoría dinámica
+  if (idCategoria === 'nueva' && descripcionInput.trim() !== '') {
+    const nuevaId = 'cat_' + Date.now();
+    appData.categorias.push({ id: nuevaId, nombre: descripcionInput, tipo: tipo });
+    idCategoria = nuevaId;
+    nombreMostrado = descripcionInput;
+  } else if (idCategoria === 'otro' && descripcionInput.trim() !== '') {
+    nombreMostrado = `Otro (${descripcionInput})`;
+  }
+
+  // Matemática
+  const cuenta = appData.cuentas.find(c => c.id === idCuenta);
+  
+  if (tipo === 'gasto') {
+    if (cuenta.type === 'debito') {
+      cuenta.balance -= monto;
+    } else {
+      cuenta.available -= monto;
+      cuenta.used += monto;
+    }
+  } else {
+    if (cuenta.type === 'debito') {
+      cuenta.balance += monto;
+    } else {
+      cuenta.available += monto;
+      cuenta.used -= monto;
+    }
+  }
+
+  appData.registros.unshift({
+    id: Date.now(),
+    tipo: tipo,
+    idCuenta: idCuenta,
+    nombreCuenta: cuenta.name,
+    nombreCategoria: nombreMostrado,
+    monto: monto
+  });
+
+  guardarDatos();
+  cerrarModal();
+  renderCuentas();
+  renderHistorial();
+  if(!document.getElementById('estadisticas-panel').classList.contains('hidden')){
+    dibujarGrafico();
+  }
+}
+
+function renderHistorial() {
+  const lista = document.getElementById('lista-historial');
+  lista.innerHTML = '';
+  
+  appData.registros.forEach(reg => {
+    const claseMonto = reg.tipo === 'gasto' ? 'monto-gasto' : 'monto-ingreso';
+    const signo = reg.tipo === 'gasto' ? '-' : '+';
     
-    statFlujo.innerText = (flujo < 0 ? '-' : '') + '$' + Math.abs(flujo).toLocaleString('es-CL');
-    statFlujo.style.color = flujo < 0 ? '#f44336' : '#fff';
-
-    const ctx = document.getElementById('myChart');
-    if(!ctx) return;
-    if (myChart) myChart.destroy();
-
-    myChart = new Chart(ctx, {
-        type: 'doughnut',
-        data: {
-            labels: Object.keys(categoriasGastos).map(c => c.toUpperCase()),
-            datasets: [{
-                data: Object.values(categoriasGastos),
-                backgroundColor: ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40', '#E7E9ED'],
-                borderWidth: 0
-            }]
-        },
-        options: {
-            responsive: true,
-            plugins: {
-                legend: { position: 'bottom', labels: { color: '#888', font: {size: 11} } }
-            }
-        }
-    });
+    lista.innerHTML += `
+      <li>
+        <div>
+          <strong>${reg.nombreCategoria}</strong>
+          <div style="font-size:12px; color:#a0a0a5">${reg.nombreCuenta}</div>
+        </div>
+        <div>
+          <span class="${claseMonto}">${signo}${formatearDinero(reg.monto)}</span>
+          <button class="btn-eliminar-registro" onclick="eliminarRegistro(${reg.id})">🗑️</button>
+        </div>
+      </li>
+    `;
+  });
 }
 
-updateUI();
+function eliminarRegistro(id) {
+  if(!confirm("¿Eliminar este registro?")) return;
+  
+  const reg = appData.registros.find(r => r.id === id);
+  const cuenta = appData.cuentas.find(c => c.id === reg.idCuenta);
+  
+  if(cuenta) {
+    if(reg.tipo === 'gasto') {
+      if(cuenta.type === 'debito') cuenta.balance += reg.monto;
+      else { cuenta.available += reg.monto; cuenta.used -= reg.monto; }
+    } else {
+      if(cuenta.type === 'debito') cuenta.balance -= reg.monto;
+      else { cuenta.available -= reg.monto; cuenta.used += reg.monto; }
+    }
+  }
+  
+  appData.registros = appData.registros.filter(r => r.id !== id);
+  guardarDatos();
+  renderCuentas();
+  renderHistorial();
+}
+
+// ---------------- PANEL Y MODALES ----------------
+function cambiarPanel(panelId) {
+  document.getElementById('inicio-panel').classList.add('hidden');
+  document.getElementById('estadisticas-panel').classList.add('hidden');
+  document.getElementById('btn-inicio').classList.remove('activo');
+  document.getElementById('btn-estadisticas').classList.remove('activo');
+
+  document.getElementById(`${panelId}-panel`).classList.remove('hidden');
+  document.getElementById(`btn-${panelId}`).classList.add('activo');
+  document.getElementById('titulo-panel').innerText = panelId === 'inicio' ? 'Panel' : 'Estadísticas';
+
+  if (panelId === 'estadisticas') dibujarGrafico();
+}
+
+function abrirModal() {
+  document.getElementById('modal-registro').classList.remove('hidden');
+  document.getElementById('monto').value = '';
+  document.getElementById('descripcion-otro').value = '';
+  cargarSelectCuentas();
+  verificarTipo();
+}
+function cerrarModal() { document.getElementById('modal-registro').classList.add('hidden'); }
+
+// Modal de Nueva Cuenta
+function abrirModalCuenta() { document.getElementById('modal-cuenta').classList.remove('hidden'); }
+function cerrarModalCuenta() { document.getElementById('modal-cuenta').classList.add('hidden'); }
+function toggleCamposCuenta() {
+  const tipo = document.getElementById('tipo-cuenta').value;
+  if(tipo === 'debito') {
+    document.getElementById('campo-saldo').classList.remove('hidden');
+    document.getElementById('campo-cupo').classList.add('hidden');
+    document.getElementById('campo-utilizado').classList.add('hidden');
+  } else {
+    document.getElementById('campo-saldo').classList.add('hidden');
+    document.getElementById('campo-cupo').classList.remove('hidden');
+    document.getElementById('campo-utilizado').classList.remove('hidden');
+  }
+}
+function guardarNuevaCuenta() {
+  const nombre = document.getElementById('nombre-cuenta').value;
+  const tipo = document.getElementById('tipo-cuenta').value;
+  const id = Date.now();
+  
+  if(!nombre) return alert('Ingresa un nombre');
+  
+  let nuevaCuenta = { id, name: nombre.toUpperCase(), type: tipo, color: '#3b82f6', letter: nombre.charAt(0).toUpperCase() };
+  
+  if(tipo === 'debito') {
+    nuevaCuenta.balance = parseFloat(document.getElementById('saldo-inicial').value) || 0;
+  } else {
+    nuevaCuenta.limit = parseFloat(document.getElementById('cupo-total').value) || 0;
+    nuevaCuenta.used = parseFloat(document.getElementById('monto-utilizado').value) || 0;
+    nuevaCuenta.available = nuevaCuenta.limit - nuevaCuenta.used;
+    nuevaCuenta.color = '#f59e0b';
+  }
+  
+  appData.cuentas.push(nuevaCuenta);
+  guardarDatos();
+  cerrarModalCuenta();
+  renderCuentas();
+}
+
+// ---------------- ESTADÍSTICAS BÁSICAS ----------------
+let chartInstance = null;
+function dibujarGrafico() {
+  const ctx = document.getElementById('graficoGastos').getContext('2d');
+  
+  const gastos = appData.registros.filter(r => r.tipo === 'gasto');
+  const sumasPorCategoria = {};
+  gastos.forEach(g => {
+    sumasPorCategoria[g.nombreCategoria] = (sumasPorCategoria[g.nombreCategoria] || 0) + g.monto;
+  });
+
+  const labels = Object.keys(sumasPorCategoria);
+  const data = Object.values(sumasPorCategoria);
+
+  if (chartInstance) chartInstance.destroy();
+
+  chartInstance = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels: labels.length ? labels : ['Sin datos'],
+      datasets: [{
+        data: data.length ? data : [1],
+        backgroundColor: data.length ? ['#3b82f6', '#a855f7', '#f59e0b', '#22c55e', '#ef4444'] : ['#2a2a2d'],
+        borderWidth: 0
+      }]
+    },
+    options: { cutout: '70%', plugins: { legend: { position: 'bottom', labels: { color: '#fff' } } } }
+  });
+}
+
+// Inicializar app
+window.onload = () => {
+  renderCuentas();
+  renderHistorial();
+};
